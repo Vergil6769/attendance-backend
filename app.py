@@ -161,7 +161,7 @@ def generate_qr():
     if not session_id:
         return jsonify({"error": "session not started"})
 
-    frontend_url = "https://dante6769.github.io/attendance-frontend"
+    frontend_url = "https://vergil6769.github.io/attendance-frontend"
 
     url = f"{frontend_url}/verify.html?session={session_id}"
 
