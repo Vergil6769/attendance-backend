@@ -60,7 +60,7 @@ def teacher_login():
 
     df = pd.read_excel(teachers_file)
     df["username"] = df["username"].astype(str)
-    df["password"]"] = df["password"].astype(str)
+    df["password"] = df["password"].astype(str)  # FIXED LINE
 
     user = df[(df["username"] == username) & (df["password"] == password)]
 
