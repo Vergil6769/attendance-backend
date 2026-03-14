@@ -8,6 +8,8 @@ import os
 import gspread
 from google.oauth2.service_account import Credentials
 import json
+import uuid
+import time
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -17,7 +19,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # -------------------------
 students_file = "data/students.xlsx"
 teachers_file = "data/teachers.xlsx"
+
 SESSION = {}
+
+QR_TOKEN = None
+QR_EXPIRY = None
 
 
 # -------------------------
@@ -31,7 +37,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load credentials from environment variable
 service_key = json.loads(os.environ["GOOGLE_SERVICE_KEY"])
 
 creds = Credentials.from_service_account_info(
@@ -40,8 +45,8 @@ creds = Credentials.from_service_account_info(
 )
 
 gc = gspread.authorize(creds)
-
 sheet = gc.open_by_key(SHEET_ID).sheet1
+
 
 # -------------------------
 # TEACHER LOGIN
@@ -55,7 +60,7 @@ def teacher_login():
 
     df = pd.read_excel(teachers_file)
     df["username"] = df["username"].astype(str)
-    df["password"] = df["password"].astype(str)
+    df["password"]"] = df["password"].astype(str)
 
     user = df[(df["username"] == username) & (df["password"] == password)]
 
@@ -151,19 +156,24 @@ def student_login():
 
 
 # -------------------------
-# GENERATE QR
+# GENERATE QR (10s token)
 # -------------------------
 @app.route("/generate_qr")
 def generate_qr():
+
+    global QR_TOKEN, QR_EXPIRY
 
     session_id = SESSION.get("session")
 
     if not session_id:
         return jsonify({"error": "session not started"})
 
+    QR_TOKEN = str(uuid.uuid4())
+    QR_EXPIRY = time.time() + 10
+
     frontend_url = "https://vergil6769.github.io/attendance-frontend"
 
-    url = f"{frontend_url}/verify.html?session={session_id}"
+    url = f"{frontend_url}/verify.html?session={session_id}&token={QR_TOKEN}"
 
     img = qrcode.make(url)
 
@@ -180,10 +190,20 @@ def generate_qr():
 @app.route("/mark_attendance", methods=["POST"])
 def mark_attendance():
 
+    global QR_TOKEN, QR_EXPIRY
+
     if "session" not in SESSION:
         return jsonify({"status": "attendance_closed"})
 
     data = request.json
+
+    token = data.get("token")
+
+    if token != QR_TOKEN:
+        return jsonify({"status": "invalid_qr"})
+
+    if time.time() > QR_EXPIRY:
+        return jsonify({"status": "qr_expired"})
 
     name = data.get("name")
     roll = data.get("roll")
