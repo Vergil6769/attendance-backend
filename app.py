@@ -155,8 +155,8 @@ def api_verify_face():
     data = request.json
     username = data.get("username")
     angle = data.get("angle")
-    image = data.get("image")
-    match = verify_face(username, angle, image)
+    encoding = data.get("encoding")  # <-- updated to accept 128-d vector
+    match = verify_face(username, angle, encoding)
     return jsonify({"match": match})
 
 @app.route("/reset_face_verification", methods=["POST"])
