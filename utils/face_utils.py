@@ -1,73 +1,108 @@
 import pickle
 import time
 import numpy as np
+import base64
+import cv2
+import face_recognition
 
 # -----------------------------
-# CONFIG
+# LOAD STUDENT ENCODINGS
 # -----------------------------
-
-# Load precomputed encodings
-# Make sure student_encodings.pkl is in the backend folder
 with open("student_encodings.pkl", "rb") as f:
-    # Format: { "A01": {"front": [...], "left": [...], "right": [...]}, ... }
     student_encodings = pickle.load(f)
 
-# Temporary verification storage
+# -----------------------------
+# FACE VERIFICATION STATUS
+# -----------------------------
 face_verified_status = {}  # username -> expiry timestamp
 
+
 # -----------------------------
-# SIMPLE FACE COMPARISON
+# BASE64 IMAGE → NUMPY IMAGE
 # -----------------------------
-def compare_encodings(known, unknown, tolerance=0.65):
-    """
-    Euclidean distance comparison between two 128-d vectors.
-    Returns True if distance < tolerance
-    """
+def decode_base64_image(base64_string):
+
+    try:
+
+        header, encoded = base64_string.split(",", 1)
+
+        image_bytes = base64.b64decode(encoded)
+
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        return rgb
+
+    except:
+        return None
+
+
+# -----------------------------
+# COMPARE FACE ENCODINGS
+# -----------------------------
+def compare_encodings(known, unknown, tolerance=0.55):
+
     dist = np.linalg.norm(np.array(known) - np.array(unknown))
+
     return dist < tolerance
+
 
 # -----------------------------
 # VERIFY FACE
 # -----------------------------
-def verify_face(username, angle, encoding):
-    """
-    Checks if the frontend-provided 128-d vector matches the stored encoding for that angle
-    """
+def verify_face(username, image_base64):
+
     if username not in student_encodings:
         return False
 
-    known_encoding = student_encodings[username].get(angle)
-    if known_encoding is None:
+    img = decode_base64_image(image_base64)
+
+    if img is None:
         return False
 
-    try:
-        new_encoding = np.array(encoding)
-    except:
+    # Detect faces
+    face_locations = face_recognition.face_locations(img)
+
+    if len(face_locations) == 0:
         return False
+
+    # Generate encoding
+    encodings = face_recognition.face_encodings(img, face_locations)
+
+    if len(encodings) == 0:
+        return False
+
+    new_encoding = encodings[0]
+
+    # Stored encoding
+    known_encoding = student_encodings[username]["front"]
 
     match = compare_encodings(known_encoding, new_encoding)
 
     if match:
-        # Mark verified for 10 seconds
+
+        # Valid for 10 seconds
         face_verified_status[username] = time.time() + 10
 
     return match
+
 
 # -----------------------------
 # CHECK VERIFIED STATUS
 # -----------------------------
 def is_face_verified(username):
-    """
-    Returns True if the face verification is still valid
-    """
+
     expiry = face_verified_status.get(username, 0)
+
     return time.time() < expiry
+
 
 # -----------------------------
 # RESET STATUS
 # -----------------------------
 def reset_face_verification(username):
-    """
-    Resets verification timer
-    """
+
     face_verified_status[username] = 0
