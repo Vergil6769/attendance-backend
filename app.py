@@ -12,10 +12,10 @@ import time
 from utils.face_utils import verify_face, reset_face_verification, is_face_verified
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 # -------------------------
-# FILES & SESSION
+# FILES
 # -------------------------
 students_file = "data/students.xlsx"
 teachers_file = "data/teachers.xlsx"
@@ -24,9 +24,8 @@ SESSION = {}
 QR_TOKEN = None
 QR_EXPIRY = None
 
-
 # -------------------------
-# GOOGLE SHEETS SETUP
+# GOOGLE SHEETS
 # -------------------------
 SHEET_ID = "1MDQUccq8OXRAArfcjVuKI_GJH0GEQNr-jabAvlMcRws"
 
@@ -106,7 +105,7 @@ def start_session():
         "division": division,
         "lecture": lecture,
         "subject": subject,
-        "teacher": teacher,
+        "teacher": teacher
     })
 
     return jsonify({
@@ -183,7 +182,7 @@ def generate_qr():
 
 
 # -------------------------
-# FACE VERIFICATION
+# FACE VERIFY
 # -------------------------
 @app.route("/verify_face", methods=["POST"])
 def api_verify_face():
@@ -191,11 +190,27 @@ def api_verify_face():
     data = request.json
 
     username = data.get("username")
-    encoding = data.get("encoding")   # 128D vector from frontend
+    encoding = data.get("encoding")
 
     match = verify_face(username, encoding)
 
     return jsonify({"match": match})
+
+
+# -------------------------
+# RESET FACE VERIFY
+# -------------------------
+@app.route("/reset_face_verification", methods=["POST"])
+def api_reset_face():
+
+    data = request.json
+
+    username = data.get("username")
+
+    reset_face_verification(username)
+
+    return jsonify({"status": "reset"})
+
 
 # -------------------------
 # MARK ATTENDANCE
@@ -228,10 +243,6 @@ def mark_attendance():
     if division != SESSION["division"]:
         return jsonify({"status": "wrong_division"})
 
-    if not all([name, roll, division]):
-        return jsonify({"status": "error", "message": "Incomplete data"})
-
-
     today = str(datetime.now().date())
     time_now = datetime.now().strftime("%H:%M")
 
@@ -242,7 +253,6 @@ def mark_attendance():
         if str(r["Roll"]) == str(roll) and r["Date"] == today and str(r["Lecture"]) == str(SESSION["lecture"]):
 
             return jsonify({"status": "already_marked"})
-
 
     row = [
         today,

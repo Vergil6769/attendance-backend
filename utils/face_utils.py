@@ -34,6 +34,10 @@ def verify_face(username, encoding):
 
     try:
         new_encoding = np.array(encoding)
+
+        if new_encoding.shape[0] != 128:
+            return False
+
     except:
         return False
 
@@ -42,7 +46,6 @@ def verify_face(username, encoding):
     match = compare_encodings(known_encoding, new_encoding)
 
     if match:
-        # valid for 10 seconds
         face_verified_status[username] = time.time() + 10
 
     return match
