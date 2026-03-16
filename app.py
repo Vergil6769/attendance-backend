@@ -172,7 +172,7 @@ def generate_qr():
 
     QR_TOKEN = str(uuid.uuid4())
 
-    QR_EXPIRY = time.time() + 5
+    QR_EXPIRY = time.time() + 10
 
     return jsonify({
         "token": QR_TOKEN,
