@@ -2,39 +2,55 @@ import pickle
 import time
 import numpy as np
 
-# -----------------------------
+# ---------------------------------
 # LOAD STUDENT ENCODINGS
-# -----------------------------
+# ---------------------------------
+
 with open("student_encodings.pkl", "rb") as f:
     student_encodings = pickle.load(f)
 
-# -----------------------------
+
+# ---------------------------------
 # FACE VERIFICATION STATUS
-# -----------------------------
-face_verified_status = {}  # username -> expiry timestamp
+# username -> expiry timestamp
+# ---------------------------------
+
+face_verified_status = {}
 
 
-# -----------------------------
+# ---------------------------------
 # COMPARE FACE ENCODINGS
-# -----------------------------
+# ---------------------------------
+
 def compare_encodings(known, unknown, tolerance=0.6):
 
-    dist = np.linalg.norm(np.array(known) - np.array(unknown))
+    try:
 
-    return dist < tolerance
+        known = np.array(known)
+        unknown = np.array(unknown)
+
+        distance = np.linalg.norm(known - unknown)
+
+        return distance < tolerance
+
+    except:
+        return False
 
 
-# -----------------------------
+# ---------------------------------
 # VERIFY FACE
-# -----------------------------
+# ---------------------------------
+
 def verify_face(username, encoding):
 
     if username not in student_encodings:
         return False
 
     try:
+
         new_encoding = np.array(encoding)
 
+        # Face-api descriptor must be length 128
         if new_encoding.shape[0] != 128:
             return False
 
@@ -46,14 +62,17 @@ def verify_face(username, encoding):
     match = compare_encodings(known_encoding, new_encoding)
 
     if match:
+
+        # Face verification valid for 10 seconds
         face_verified_status[username] = time.time() + 10
 
     return match
 
 
-# -----------------------------
-# CHECK VERIFIED STATUS
-# -----------------------------
+# ---------------------------------
+# CHECK FACE VERIFIED
+# ---------------------------------
+
 def is_face_verified(username):
 
     expiry = face_verified_status.get(username, 0)
@@ -61,9 +80,10 @@ def is_face_verified(username):
     return time.time() < expiry
 
 
-# -----------------------------
-# RESET STATUS
-# -----------------------------
+# ---------------------------------
+# RESET VERIFICATION
+# ---------------------------------
+
 def reset_face_verification(username):
 
     face_verified_status[username] = 0

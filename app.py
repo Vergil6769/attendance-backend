@@ -15,18 +15,21 @@ app = Flask(__name__)
 CORS(app)
 
 # -------------------------
-# FILES
+# FILE PATHS
 # -------------------------
+
 students_file = "data/students.xlsx"
 teachers_file = "data/teachers.xlsx"
 
 SESSION = {}
+
 QR_TOKEN = None
 QR_EXPIRY = None
 
 # -------------------------
 # GOOGLE SHEETS
 # -------------------------
+
 SHEET_ID = "1MDQUccq8OXRAArfcjVuKI_GJH0GEQNr-jabAvlMcRws"
 
 SCOPES = [
@@ -46,18 +49,19 @@ sheet = gc.open_by_key(SHEET_ID).sheet1
 # -------------------------
 # TEACHER LOGIN
 # -------------------------
+
 @app.route("/teacher_login", methods=["POST"])
 def teacher_login():
 
     data = request.json
 
-    username = str(data.get("username"))
-    password = str(data.get("password"))
+    username = str(data.get("username")).strip()
+    password = str(data.get("password")).strip()
 
-    df = pd.read_excel(teachers_file)
+    df = pd.read_excel(teachers_file, dtype=str)
 
-    df["username"] = df["username"].astype(str)
-    df["password"] = df["password"].astype(str)
+    df["username"] = df["username"].str.strip()
+    df["password"] = df["password"].str.strip()
 
     user = df[(df["username"] == username) & (df["password"] == password)]
 
@@ -73,14 +77,15 @@ def teacher_login():
 # -------------------------
 # START SESSION
 # -------------------------
+
 @app.route("/start_session", methods=["POST"])
 def start_session():
 
     data = request.json
 
-    division = data["division"]
-    lecture = int(data["lecture"])
-    teacher = data["teacher"]
+    division = data.get("division")
+    lecture = int(data.get("lecture"))
+    teacher = data.get("teacher")
 
     timetable_file = f"data/timetable{division}.xlsx"
 
@@ -100,6 +105,8 @@ def start_session():
 
     session_id = str(datetime.now().timestamp())
 
+    SESSION.clear()
+
     SESSION.update({
         "session": session_id,
         "division": division,
@@ -118,6 +125,7 @@ def start_session():
 # -------------------------
 # STOP SESSION
 # -------------------------
+
 @app.route("/stop_session", methods=["POST"])
 def stop_session():
 
@@ -129,6 +137,7 @@ def stop_session():
 # -------------------------
 # STUDENT LOGIN
 # -------------------------
+
 @app.route("/student_login", methods=["POST"])
 def student_login():
 
@@ -158,8 +167,9 @@ def student_login():
 
 
 # -------------------------
-# GENERATE QR
+# GENERATE QR TOKEN
 # -------------------------
+
 @app.route("/generate_qr")
 def generate_qr():
 
@@ -172,18 +182,19 @@ def generate_qr():
 
     QR_TOKEN = str(uuid.uuid4())
 
-    QR_EXPIRY = time.time() + 10
+    QR_EXPIRY = time.time() + 10   # valid for 10 seconds
 
     return jsonify({
         "token": QR_TOKEN,
-        "expiry": QR_EXPIRY,
-        "session": session_id
+        "session": session_id,
+        "expiry": QR_EXPIRY
     })
 
 
 # -------------------------
 # FACE VERIFY
 # -------------------------
+
 @app.route("/verify_face", methods=["POST"])
 def api_verify_face():
 
@@ -200,6 +211,7 @@ def api_verify_face():
 # -------------------------
 # RESET FACE VERIFY
 # -------------------------
+
 @app.route("/reset_face_verification", methods=["POST"])
 def api_reset_face():
 
@@ -215,6 +227,7 @@ def api_reset_face():
 # -------------------------
 # MARK ATTENDANCE
 # -------------------------
+
 @app.route("/mark_attendance", methods=["POST"])
 def mark_attendance():
 
@@ -231,8 +244,16 @@ def mark_attendance():
     division = data.get("division")
     username = data.get("username")
 
+    # -------------------------
+    # FACE CHECK
+    # -------------------------
+
     if not is_face_verified(username):
         return jsonify({"status": "face_verification_invalid"})
+
+    # -------------------------
+    # QR CHECK
+    # -------------------------
 
     if token != QR_TOKEN:
         return jsonify({"status": "invalid_qr"})
@@ -240,8 +261,16 @@ def mark_attendance():
     if time.time() > QR_EXPIRY:
         return jsonify({"status": "qr_expired"})
 
+    # -------------------------
+    # DIVISION CHECK
+    # -------------------------
+
     if division != SESSION["division"]:
         return jsonify({"status": "wrong_division"})
+
+    # -------------------------
+    # DUPLICATE CHECK
+    # -------------------------
 
     today = str(datetime.now().date())
     time_now = datetime.now().strftime("%H:%M")
@@ -250,9 +279,16 @@ def mark_attendance():
 
     for r in records:
 
-        if str(r["Roll"]) == str(roll) and r["Date"] == today and str(r["Lecture"]) == str(SESSION["lecture"]):
-
+        if (
+            str(r["Roll"]) == str(roll)
+            and r["Date"] == today
+            and str(r["Lecture"]) == str(SESSION["lecture"])
+        ):
             return jsonify({"status": "already_marked"})
+
+    # -------------------------
+    # SAVE ATTENDANCE
+    # -------------------------
 
     row = [
         today,
@@ -273,6 +309,7 @@ def mark_attendance():
 # -------------------------
 # VIEW ATTENDANCE
 # -------------------------
+
 @app.route("/attendance_by_division")
 def attendance_by_division():
 
@@ -288,6 +325,7 @@ def attendance_by_division():
 # -------------------------
 # RUN SERVER
 # -------------------------
+
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
