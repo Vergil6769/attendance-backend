@@ -191,24 +191,11 @@ def api_verify_face():
     data = request.json
 
     username = data.get("username")
-    image = data.get("image")
+    encoding = data.get("encoding")   # 128D vector from frontend
 
-    match = verify_face(username, image)
+    match = verify_face(username, encoding)
 
     return jsonify({"match": match})
-
-
-@app.route("/reset_face_verification", methods=["POST"])
-def api_reset_face():
-
-    data = request.json
-
-    username = data.get("username")
-
-    reset_face_verification(username)
-
-    return jsonify({"success": True})
-
 
 # -------------------------
 # MARK ATTENDANCE
