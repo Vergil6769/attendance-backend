@@ -3,9 +3,7 @@ import time
 import numpy as np
 import os
 
-# -------------------------
-# LOAD STUDENT ENCODINGS
-# -------------------------
+# Load encodings relative to backend folder
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PICKLE_PATH = os.path.join(BASE_DIR, "student_encodings.pkl")
 
@@ -16,14 +14,8 @@ except Exception as e:
     print("Error loading student_encodings.pkl:", e)
     student_encodings = {}
 
-# -------------------------
-# FACE VERIFICATION STATUS
-# -------------------------
 face_verified_status = {}
 
-# -------------------------
-# COMPARE FACE ENCODINGS
-# -------------------------
 def compare_encodings(known, unknown, tolerance=0.6):
     try:
         known = np.array(known)
@@ -36,9 +28,6 @@ def compare_encodings(known, unknown, tolerance=0.6):
         print("Compare encoding error:", e)
         return False
 
-# -------------------------
-# VERIFY FACE
-# -------------------------
 def verify_face(username, encoding):
     if username not in student_encodings:
         print(f"Username {username} not found in encodings")
@@ -55,18 +44,12 @@ def verify_face(username, encoding):
     known_encoding = student_encodings[username]["front"]
     match = compare_encodings(known_encoding, new_encoding)
     if match:
-        face_verified_status[username] = time.time() + 10  # valid 10 seconds
+        face_verified_status[username] = time.time() + 10
     return match
 
-# -------------------------
-# CHECK FACE VERIFIED
-# -------------------------
 def is_face_verified(username):
     expiry = face_verified_status.get(username, 0)
     return time.time() < expiry
 
-# -------------------------
-# RESET VERIFICATION
-# -------------------------
 def reset_face_verification(username):
     face_verified_status[username] = 0
