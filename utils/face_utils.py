@@ -36,25 +36,25 @@ def compare_encodings(known, unknown, tolerance=0.6):
 # ---------------------------------
 # VERIFY FACE
 # ---------------------------------
-def verify_face(username, encoding):
-    if username not in student_encodings:
-        print(f"Username {username} not found in encodings")
-        return False
+@app.route("/verify_face", methods=["POST"])
+def api_verify_face():
     try:
-        new_encoding = np.array(encoding)
-        if new_encoding.shape[0] != 128:
-            print("Incoming encoding wrong length:", new_encoding.shape[0])
-            return False
-    except Exception as e:
-        print("Error converting encoding:", e)
-        return False
+        data = request.json
+        if not data:
+            return jsonify({"error": "no data received"}), 400
 
-    known_encoding = student_encodings[username]["front"]
-    match = compare_encodings(known_encoding, new_encoding)
-    if match:
-        # Face verification valid for 10 seconds
-        face_verified_status[username] = time.time() + 10
-    return match
+        username = data.get("username")
+        encoding = data.get("encoding")
+
+        if not username or not encoding:
+            return jsonify({"error": "username or encoding missing"}), 400
+
+        match = verify_face(username, encoding)
+        return jsonify({"match": match})
+
+    except Exception as e:
+        print("ERROR in /verify_face:", e)  # This prints to your backend console
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------------------
 # CHECK FACE VERIFIED
