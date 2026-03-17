@@ -28,11 +28,7 @@ QR_EXPIRY = None
 # GOOGLE SHEETS
 # -------------------------
 SHEET_ID = "1MDQUccq8OXRAArfcjVuKI_GJH0GEQNr-jabAvlMcRws"
-
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"]
 
 service_key = json.loads(os.environ["GOOGLE_SERVICE_KEY"])
 creds = Credentials.from_service_account_info(service_key, scopes=SCOPES)
@@ -47,11 +43,9 @@ def teacher_login():
     data = request.json
     username = str(data.get("username")).strip()
     password = str(data.get("password")).strip()
-
     df = pd.read_excel(teachers_file, dtype=str)
     df["username"] = df["username"].str.strip()
     df["password"] = df["password"].str.strip()
-
     user = df[(df["username"] == username) & (df["password"] == password)]
     if not user.empty:
         SESSION["teacher"] = username
@@ -80,7 +74,6 @@ def start_session():
 
     subject = lec.iloc[0]["Subject"]
     session_id = str(datetime.now().timestamp())
-
     SESSION.clear()
     SESSION.update({
         "session": session_id,
@@ -89,7 +82,6 @@ def start_session():
         "subject": subject,
         "teacher": teacher
     })
-
     return jsonify({"status": "session_started", "subject": subject, "session": session_id})
 
 # -------------------------
@@ -108,15 +100,12 @@ def student_login():
     data = request.json
     username = str(data.get("username")).strip()
     password = str(data.get("password")).strip()
-
     df = pd.read_excel(students_file, dtype=str)
     df["Username"] = df["Username"].str.strip()
     df["Password"] = df["Password"].str.strip()
-
     user = df[(df["Username"] == username) & (df["Password"] == password)]
     if user.empty:
         return jsonify({"status": "fail"})
-    
     student = user.iloc[0]
     return jsonify({
         "status": "success",
@@ -134,14 +123,12 @@ def generate_qr():
     session_id = SESSION.get("session")
     if not session_id:
         return jsonify({"error": "session_not_started"}), 400
-
     QR_TOKEN = str(uuid.uuid4())
-    QR_EXPIRY = time.time() + 10  # valid 10 seconds
-
+    QR_EXPIRY = time.time() + 10
     return jsonify({"token": QR_TOKEN, "session": session_id, "expiry": QR_EXPIRY})
 
 # -------------------------
-# FACE VERIFY ENDPOINT
+# FACE VERIFY
 # -------------------------
 @app.route("/verify_face", methods=["POST"])
 def api_verify_face():
@@ -156,18 +143,16 @@ def api_verify_face():
         if not username or not encoding:
             return jsonify({"error": "username or encoding missing"}), 400
 
-        # Check encoding is a list of 128 numbers
         if not isinstance(encoding, list) or len(encoding) != 128:
             return jsonify({"error": "encoding must be a list of 128 numbers"}), 400
 
-        # Convert encoding to floats
         encoding = [float(x) for x in encoding]
-
         match = verify_face(username, encoding)
         return jsonify({"match": match})
 
     except Exception as e:
-        print("ERROR in /verify_face:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 # -------------------------
@@ -183,9 +168,9 @@ def api_reset_face():
         reset_face_verification(username)
         return jsonify({"status": "reset"})
     except Exception as e:
-        print("ERROR in /reset_face_verification:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
 
 # -------------------------
 # MARK ATTENDANCE
@@ -203,21 +188,16 @@ def mark_attendance():
     division = data.get("division")
     username = data.get("username")
 
-    # Face verification check
     if not is_face_verified(username):
         return jsonify({"status": "face_verification_invalid"})
 
-    # QR check
     if token != QR_TOKEN:
         return jsonify({"status": "invalid_qr"})
     if time.time() > QR_EXPIRY:
         return jsonify({"status": "qr_expired"})
-
-    # Division check
     if division != SESSION["division"]:
         return jsonify({"status": "wrong_division"})
 
-    # Duplicate check
     today = str(datetime.now().date())
     time_now = datetime.now().strftime("%H:%M")
     records = sheet.get_all_records()
@@ -225,7 +205,6 @@ def mark_attendance():
         if str(r["Roll"]) == str(roll) and r["Date"] == today and str(r["Lecture"]) == str(SESSION["lecture"]):
             return jsonify({"status": "already_marked"})
 
-    # Save attendance
     row = [today, time_now, name, roll, division, SESSION["subject"], SESSION["lecture"], SESSION["teacher"]]
     sheet.append_row(row)
     return jsonify({"status": "present"})
