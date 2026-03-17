@@ -141,26 +141,51 @@ def generate_qr():
     return jsonify({"token": QR_TOKEN, "session": session_id, "expiry": QR_EXPIRY})
 
 # -------------------------
-# FACE VERIFY
+# FACE VERIFY ENDPOINT
 # -------------------------
 @app.route("/verify_face", methods=["POST"])
 def api_verify_face():
-    data = request.json
-    username = data.get("username")
-    encoding = data.get("encoding")
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "no data received"}), 400
 
-    match = verify_face(username, encoding)
-    return jsonify({"match": match})
+        username = data.get("username")
+        encoding = data.get("encoding")
+
+        if not username or not encoding:
+            return jsonify({"error": "username or encoding missing"}), 400
+
+        # Check encoding is a list of 128 numbers
+        if not isinstance(encoding, list) or len(encoding) != 128:
+            return jsonify({"error": "encoding must be a list of 128 numbers"}), 400
+
+        # Convert encoding to floats
+        encoding = [float(x) for x in encoding]
+
+        match = verify_face(username, encoding)
+        return jsonify({"match": match})
+
+    except Exception as e:
+        print("ERROR in /verify_face:", e)
+        return jsonify({"error": str(e)}), 500
 
 # -------------------------
 # RESET FACE VERIFY
 # -------------------------
 @app.route("/reset_face_verification", methods=["POST"])
 def api_reset_face():
-    data = request.json
-    username = data.get("username")
-    reset_face_verification(username)
-    return jsonify({"status": "reset"})
+    try:
+        data = request.json
+        username = data.get("username")
+        if not username:
+            return jsonify({"error": "username missing"}), 400
+        reset_face_verification(username)
+        return jsonify({"status": "reset"})
+    except Exception as e:
+        print("ERROR in /reset_face_verification:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 # -------------------------
 # MARK ATTENDANCE
@@ -219,5 +244,4 @@ def attendance_by_division():
 # RUN SERVER
 # -------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000, debug=True)

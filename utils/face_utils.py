@@ -9,7 +9,7 @@ try:
     with open("student_encodings.pkl", "rb") as f:
         student_encodings = pickle.load(f)
 except Exception as e:
-    print("Error loading student_encodings.pkl:", e)
+    print("ERROR loading student_encodings.pkl:", e)
     student_encodings = {}
 
 # ---------------------------------
@@ -25,36 +25,38 @@ def compare_encodings(known, unknown, tolerance=0.6):
     try:
         known = np.array(known)
         unknown = np.array(unknown)
-        if known.shape[0] != 128 or unknown.shape[0] != 128:
+        if known.shape != unknown.shape:
             return False
         distance = np.linalg.norm(known - unknown)
         return distance < tolerance
     except Exception as e:
-        print("Compare encoding error:", e)
+        print("ERROR in compare_encodings:", e)
         return False
 
 # ---------------------------------
 # VERIFY FACE
 # ---------------------------------
-@app.route("/verify_face", methods=["POST"])
-def api_verify_face():
+def verify_face(username, encoding):
+    if username not in student_encodings:
+        print(f"Username {username} not found in encodings")
+        return False
     try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "no data received"}), 400
-
-        username = data.get("username")
-        encoding = data.get("encoding")
-
-        if not username or not encoding:
-            return jsonify({"error": "username or encoding missing"}), 400
-
-        match = verify_face(username, encoding)
-        return jsonify({"match": match})
-
+        new_encoding = np.array(encoding, dtype=float)
+        if new_encoding.shape[0] != 128:
+            print(f"Encoding length invalid for {username}, got {new_encoding.shape[0]}")
+            return False
     except Exception as e:
-        print("ERROR in /verify_face:", e)  # This prints to your backend console
-        return jsonify({"error": str(e)}), 500
+        print(f"Error converting encoding to np.array for {username}:", e)
+        return False
+
+    known_encoding = student_encodings[username]["front"]
+    match = compare_encodings(known_encoding, new_encoding)
+
+    if match:
+        # Face verification valid for 10 seconds
+        face_verified_status[username] = time.time() + 10
+
+    return match
 
 # ---------------------------------
 # CHECK FACE VERIFIED
