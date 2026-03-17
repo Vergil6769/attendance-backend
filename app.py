@@ -156,7 +156,7 @@ def student_login():
 
 
 # -------------------------
-# GENERATE QR (10s token)
+# GENERATE QR (7s token)
 # -------------------------
 @app.route("/generate_qr")
 def generate_qr():
@@ -169,7 +169,7 @@ def generate_qr():
         return jsonify({"error": "session not started"})
 
     QR_TOKEN = str(uuid.uuid4())
-    QR_EXPIRY = time.time() + 10
+    QR_EXPIRY = time.time() + 7
 
     frontend_url = "https://vergil6769.github.io/attendance-frontend"
 
