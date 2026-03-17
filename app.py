@@ -9,7 +9,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 
-from face_utils import verify_face, reset_face_verification, is_face_verified
+from utils.face_utils import verify_face, reset_face_verification, is_face_verified
 
 app = Flask(__name__)
 CORS(app)
